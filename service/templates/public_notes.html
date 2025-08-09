@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        color: #333;
+    }
+    .public-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    h1 {
+        color: #2c3e50;
+        margin: 0;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+    .action-link {
+        display: inline-block;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 4px;
+        text-decoration: none;
+        text-align: center;
+        font-size: 0.95em;
+        min-width: 120px;
+    }
+    .back-link {
+        background-color: #3498db;
+    }
+    .back-link:hover {
+        background-color: #2980b9;
+    }
+    .login-link {
+        background-color: #2ecc71;
+    }
+    .login-link:hover {
+        background-color: #27ae60;
+    }
+    .register-link {
+        background-color: #9b59b6;
+    }
+    .register-link:hover {
+        background-color: #8e44ad;
+    }
+    .notes-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .note {
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        position: relative;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .note h3 {
+        margin-top: 0;
+        color: #2c3e50;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+    }
+    .note p {
+        margin-bottom: 15px;
+        white-space: pre-wrap;
+        line-height: 1.5;
+    }
+    .author-badge {
+        display: inline-block;
+        background-color: #e1f0fa;
+        color: #2980b9;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.85em;
+        border: 1px solid #b3d9ff;
+        margin-top: 10px;
+    }
+    .empty-message {
+        color: #7f8c8d;
+        font-style: italic;
+        text-align: center;
+        padding: 40px 0;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        border: 1px solid #eee;
+    }
+    .file-link {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 6px 12px;
+        background-color: #9b59b6;
+        color: white;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 0.9em;
+    }
+    .file-link:hover {
+        background-color: #8e44ad;
+    }
+    .file-icon {
+        margin-right: 5px;
+    }
+    .file-info {
+        margin-top: 10px;
+    }
+</style>
+
+<div class="public-header">
+    <h1>Публичные заметки</h1>
+    <div class="action-buttons">
+        {% if 'user_id' in session %}
+            <a href="{{ url_for('index') }}" class="action-link back-link">← Мои заметки</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="action-link login-link">Войти</a>
+            <a href="{{ url_for('register') }}" class="action-link register-link">Регистрация</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if notes %}
+    <div class="notes-list">
+        {% for note in notes %}
+            <div class="note">
+                <h3>{{ note.title }}</h3>
+                <p>{{ note.content }}</p>
+
+                {% if note.file %}
+                    <div class="file-info">
+                        <a href="{{ url_for('download_file', filename=note.file) }}" class="file-link">
+                            <span class="file-icon">📎</span> Скачать {{ note.file }}
+                        </a>
+                    </div>
+                {% endif %}
+
+                <span class="author-badge">Автор: {{ note.username }}</span>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="empty-message">Пока нет публичных заметок</p>
+{% endif %}
+{% endblock %}
