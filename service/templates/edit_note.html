@@ -136,7 +136,7 @@
                 {% if note and note.file %}
                     <div class="file-preview">
                         Текущий файл: {{ note.file }}
-                        <a href="{{ url_for('download_file', filename=note.file) }}" target="_blank">(просмотреть)</a>
+                        <a href="/download?filename={{ note.file }}" target="_blank">(просмотреть)</a>
                     </div>
                     <div class="file-actions">
                         <button type="button" onclick="document.getElementById('file').click()" class="btn btn-secondary">

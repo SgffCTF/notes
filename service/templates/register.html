@@ -82,14 +82,6 @@
 <div class="auth-container">
     <h2>Регистрация</h2>
 
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <div class="error-message">
-                {{ messages[0] }}
-            </div>
-        {% endif %}
-    {% endwith %}
-
     <form method="POST">
         <div class="form-group">
             <label for="username">Имя пользователя:</label>

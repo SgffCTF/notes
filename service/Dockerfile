@@ -1,8 +1,10 @@
-FROM python:3.9-slim
+FROM python:3.13.5-alpine3.21
 
-RUN apt-get update && apt-get install -y \
-    sqlite3 \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache \
+    sqlite \
+    sqlite-dev \
+    build-base \
+    linux-headers
 
 WORKDIR /app
 
@@ -14,12 +16,9 @@ COPY . .
 
 RUN mkdir -p /app/uploads && \
     touch /app/notes.db && \
-    chmod 777 /app/uploads /app/notes.db
-
-RUN chmod 777 /tmp
-
-# RUN python -c "from app import init_db; init_db()"
+    chmod 777 /app/uploads /app/notes.db && \
+    chmod 777 /tmp
 
 EXPOSE 5000
 
-CMD ["python", "web.py"]
+CMD ["python3", "web.py"]

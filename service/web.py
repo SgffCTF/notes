@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, g
-from flask import send_from_directory
+from flask import send_file
 import sqlite3
 import os
 import hashlib
@@ -88,10 +88,11 @@ def register():
 
         db = get_db()
         try:
-            db.execute('INSERT INTO users (username, password) VALUES (?, ?)',
+            cursor = db.execute('INSERT INTO users (username, password) VALUES (?, ?)',
                        (username, hashed_password))
             db.commit()
-            flash('Регистрация прошла успешно! Теперь вы можете войти.', 'success')
+            user_id = cursor.lastrowid
+            flash(f'Регистрация пользователя с id={user_id} прошла успешно! Теперь вы можете войти.', 'success')
             return redirect(url_for('login'))
         except sqlite3.IntegrityError:
             flash('Это имя пользователя уже занято!', 'error')
@@ -157,12 +158,13 @@ def add_note():
 
         db = get_db()
         try:
-            db.execute('''
+            cursor = db.execute('''
                 INSERT INTO notes (title, content, file, user_id, is_public) 
                 VALUES (?, ?, ?, ?, ?)
             ''', (title, content, file_path, session['user_id'], is_public))
             db.commit()
-            flash('Заметка успешно создана!', 'success')
+            note_id = cursor.lastrowid
+            flash(f'Заметка с id={note_id} успешно создана!', 'success')
             return redirect(url_for('index'))
         except sqlite3.Error as e:
             db.rollback()
@@ -172,36 +174,25 @@ def add_note():
     return render_template('add_note.html')
 
 
-@app.route('/download/<filename>')
-def download_file(filename):
-    db = get_db()
-
-    public_note = db.execute('''
-        SELECT * FROM notes 
-        WHERE file = ? AND is_public = 1
-    ''', (filename,)).fetchone()
-
-    if not public_note:
-        if 'user_id' not in session:
-            flash('Для скачивания этого файла требуется авторизация', 'error')
-            return redirect(url_for('login'))
-
-        user_note = db.execute('''
-            SELECT * FROM notes 
-            WHERE file = ? AND user_id = ?
-        ''', (filename, session['user_id'])).fetchone()
-
-        if not user_note:
-            flash('Файл не найден или у вас нет доступа', 'error')
-            return redirect(url_for('index'))
+@app.route('/download')
+def download_file():
+    filename = request.args.get('filename')
+    if not filename:
+        flash('Не указано имя файла', 'error')
+        return redirect(url_for('index'))
 
     upload_dir = Path(app.config['UPLOAD_FOLDER'])
     requested_file = upload_dir / filename
+    
+    if '../' in str(requested_file):
+        flash('malicious', 'error')
+        return redirect(url_for('index'))
 
     if not requested_file.exists():
         flash('Файл не найден', 'error')
-        return redirect(url_for('public_notes' if public_note else 'index'))
-    return send_from_directory(str(upload_dir), filename, as_attachment=True)
+        return redirect(url_for('index'))
+
+    return send_file(requested_file, as_attachment=True)
 
 
 @app.route('/edit/<int:note_id>', methods=['GET', 'POST'])
@@ -217,7 +208,6 @@ def edit_note(note_id):
         return redirect(url_for('index'))
 
     if request.method == 'POST':
-        title = note['title']  
         content = request.form.get('content', '').strip()
         is_public = 1 if request.form.get('is_public') else 0
         remove_file = request.form.get('remove_file') == '1'
@@ -289,6 +279,5 @@ def delete_note(note_id):
 
 
 if __name__ == '__main__':
-    if not os.path.exists(DATABASE):
-        init_db()
+    init_db()
     app.run(host="0.0.0.0")
