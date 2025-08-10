@@ -195,7 +195,7 @@ def download_file():
     return send_file(requested_file, as_attachment=True)
 
 
-@app.route('/edit/<int:note_id>', methods=['GET', 'POST'])
+@app.route('/edit/<int:note_id>', methods=['POST'])
 def edit_note(note_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -203,51 +203,50 @@ def edit_note(note_id):
     db = get_db()
     note = db.execute('SELECT * FROM notes WHERE id = ?', (note_id,)).fetchone()
     
-    if note is None or note['user_id'] != session['user_id']:
-        flash('Вы не можете редактировать эту заметку!', 'error')
+    if note is None:
+        flash('Заметка не найдена :(', 'error')
         return redirect(url_for('index'))
 
-    if request.method == 'POST':
-        content = request.form.get('content', '').strip()
-        is_public = 1 if request.form.get('is_public') else 0
-        remove_file = request.form.get('remove_file') == '1'
-        file_path = note['file']
+    content = request.form.get('content', '').strip()
+    is_public = 1 if request.form.get('is_public') else 0
+    remove_file = request.form.get('remove_file') == '1'
+    file_path = note['file']
 
-        if 'file' in request.files:
-            file = request.files['file']
-            if file.filename != '':
-                if file and allowed_file(file.filename):
-                    if file_path:
-                        try:
-                            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file_path.split('/')[-1]))
-                        except Exception as e:
-                            app.logger.error(f"Error deleting file: {e}")
+    if 'file' in request.files:
+        file = request.files['file']
+        if file.filename != '':
+            if file and allowed_file(file.filename):
+                if file_path:
+                    try:
+                        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file_path.split('/')[-1]))
+                    except Exception as e:
+                        app.logger.error(f"Error deleting file: {e}")
 
-                    filename = secure_filename(file.filename)
-                    save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    file.save(save_path)
-                    file_path = os.path.join('uploads', filename)
-                else:
-                    flash('Недопустимый тип файла!', 'error')
-                    return redirect(url_for('edit_note', note_id=note_id))
+                filename = secure_filename(file.filename)
+                save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(save_path)
+                file_path = os.path.join('uploads', filename)
+            else:
+                flash('Недопустимый тип файла!', 'error')
+                return redirect(url_for('edit_note', note_id=note_id))
 
-        if remove_file and file_path:
-            try:
-                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file_path.split('/')[-1]))
-                file_path = None
-            except Exception as e:
-                app.logger.error(f"Error deleting file: {e}")
-                flash('Ошибка при удалении файла', 'error')
+    if remove_file and file_path:
+        try:
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file_path.split('/')[-1]))
+            file_path = None
+        except Exception as e:
+            app.logger.error(f"Error deleting file: {e}")
+            flash('Ошибка при удалении файла', 'error')
 
-        db.execute('''
-            UPDATE notes 
-            SET content = ?, is_public = ?, file = ?
-            WHERE id = ?
-        ''', (content, is_public, file_path, note_id))
-        db.commit()
+    db.execute('''
+        UPDATE notes 
+        SET content = ?, is_public = ?, file = ?
+        WHERE id = ?
+    ''', (content, is_public, file_path, note_id))
+    db.commit()
 
-        flash('Заметка обновлена!', 'success')
-        return redirect(url_for('index'))
+    flash('Заметка обновлена!', 'success')
+    return redirect(url_for('index'))
 
     return render_template('edit_note.html', note=dict(note))
 
