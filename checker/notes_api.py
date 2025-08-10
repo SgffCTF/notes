@@ -36,8 +36,14 @@ class NotesApi:
         r = self.session.post(url=f'{self.url}/login', data={'username': username, 'password': password})
         self.c.assert_eq(r.status_code, 200, "Статус код не совпал")
 
-    def add(self, title: str, content: str, is_public: int) -> int:
-        r = self.session.post(url=f'{self.url}/add', data={'title': title, 'content': content, 'is_public': is_public})
+    def add(self, title: str, content: str, is_public: bool) -> int:
+        data = {
+            'title': title,
+            'content': content
+        }
+        if is_public:
+            data["is_public"] = 1
+        r = self.session.post(url=f'{self.url}/add', json=data)
         self.c.assert_eq(r.status_code, 200, "статус код не совпал")
         
         match = re.search(r"id=(\d+)", r.text)
