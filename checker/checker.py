@@ -55,7 +55,7 @@ class Checker(BaseChecker):
         if note_id == -1:
             self.cquit(Status.CORRUPT, "Заметка не была создана")
         
-        public_flag_id = f"{user_id}:{note_id}"
+        public_flag_id = f"{username}:{user_id}:{note_id}"
         private_flag_id = f"{username}:{password}:{note_id}"
         self.cquit(Status.OK, public_flag_id, private_flag_id)
     
