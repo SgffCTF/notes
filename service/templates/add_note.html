@@ -65,7 +65,7 @@
 </head>
 <body>
     <h1>Добавить новую заметку</h1>
-    <form method="post" enctype="multipart/form-data">
+    <form id="add-form" method="post" enctype="multipart/form-data">
         <div>
             <label for="title">Название:</label>
             <input type="text" id="title" name="title" required>
@@ -87,7 +87,65 @@
     </form>
     <a href="{{ url_for('index') }}">← Назад к списку заметок</a>
 
-    <!-- Вывод flash-сообщений -->
+    <script>
+        const form = document.getElementById("add-form");
+
+        form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const title = document.getElementById("title").value;
+        const content = document.getElementById("content").value;
+        const fileInput = document.getElementById("file");
+        const isPublic = document.getElementById("is_public").checked;
+
+        // Проверка наличия файла (если нужно)
+        const file = fileInput.files[0];
+
+        const formData = new FormData();
+        if (file) {
+            formData.append("file", file);
+        }
+
+        try {
+            let data = {
+                title,
+                content,
+                is_public: isPublic ? "true" : "false",
+            };
+            if (file) {
+                const res = await fetch("/load", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (!res.ok) {
+                console.error("Failed to upload file");
+                return;
+                }
+                data.file = file.name;
+            }
+
+            const res2 = await fetch("/add", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (!res2.ok) {
+                console.error("Failed to post note");
+                return;
+            }
+
+            window.location.href = "/";
+        } catch (error) {
+            console.error("Ошибка:", error);
+        }
+        });
+
+    </script>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="flash-messages">

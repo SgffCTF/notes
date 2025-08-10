@@ -135,33 +135,31 @@ def add_note():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        title = request.form.get('title', '').strip()
-        content = request.form.get('content', '').strip()
-        is_public = 1 if request.form.get('is_public') else 0
+        data = request.get_json()
+        title = data["title"]
+        content = data["content"]
+        is_public = 1 if data["is_public"] == "true" else 0
         file_path = None
+        if "file" in data:
+            file_path = data["file"]
+        print(data)
 
         if not title:
             flash('Требуется название!', 'error')
             return redirect(url_for('add_note'))
 
-        if 'file' in request.files:
-            file = request.files['file']
-            if file.filename != '':
-                if file and allowed_file(file.filename):
-                    filename = secure_filename(file.filename)
-                    save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    file.save(save_path)
-                    file_path = filename
-                else:
-                    flash('Недопустимый тип файла!', 'error')
-                    return redirect(url_for('add_note'))
-
         db = get_db()
         try:
-            cursor = db.execute('''
-                INSERT INTO notes (title, content, file, user_id, is_public) 
-                VALUES (?, ?, ?, ?, ?)
-            ''', (title, content, file_path, session['user_id'], is_public))
+            if file_path:
+                cursor = db.execute('''
+                    INSERT INTO notes (title, content, file, user_id, is_public) 
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (title, content, file_path, session['user_id'], is_public))
+            else:
+                cursor = db.execute('''
+                    INSERT INTO notes (title, content, user_id, is_public) 
+                    VALUES (?, ?, ?, ?)
+                ''', (title, content, session['user_id'], is_public))
             db.commit()
             note_id = cursor.lastrowid
             flash(f'Заметка с id={note_id} успешно создана!', 'success')
@@ -173,6 +171,20 @@ def add_note():
 
     return render_template('add_note.html')
 
+@app.route("/load", methods=["POST"])
+def load_file():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    file = request.files["file"]
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(save_path)
+        return redirect(url_for('add_note'))
+    else:
+        flash('Недопустимый тип файла!', 'error')
+        return redirect(url_for('add_note'))
 
 @app.route('/download')
 def download_file():
@@ -195,7 +207,7 @@ def download_file():
     return send_file(requested_file, as_attachment=True)
 
 
-@app.route('/edit/<int:note_id>', methods=['POST'])
+@app.route('/edit/<int:note_id>', methods=['GET', 'POST'])
 def edit_note(note_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -207,47 +219,30 @@ def edit_note(note_id):
         flash('Заметка не найдена :(', 'error')
         return redirect(url_for('index'))
 
-    content = request.form.get('content', '').strip()
-    is_public = 1 if request.form.get('is_public') else 0
-    remove_file = request.form.get('remove_file') == '1'
-    file_path = note['file']
+    if request.method == 'POST':
+        data = request.get_json()
+        content = data["content"]
+        is_public = 1 if data["is_public"] == "true" else 0
+        file_path = None
+        if "file" in data:
+            file_path = data["file"]
 
-    if 'file' in request.files:
-        file = request.files['file']
-        if file.filename != '':
-            if file and allowed_file(file.filename):
-                if file_path:
-                    try:
-                        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file_path.split('/')[-1]))
-                    except Exception as e:
-                        app.logger.error(f"Error deleting file: {e}")
+        if file_path:
+            db.execute('''
+                UPDATE notes 
+                SET content = ?, is_public = ?, file = ?
+                WHERE id = ?
+            ''', (content, is_public, file_path, note_id))
+        else:
+            db.execute('''
+                UPDATE notes 
+                SET content = ?, is_public = ?
+                WHERE id = ?
+            ''', (content, is_public, note_id))
+        db.commit()
 
-                filename = secure_filename(file.filename)
-                save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(save_path)
-                file_path = os.path.join('uploads', filename)
-            else:
-                flash('Недопустимый тип файла!', 'error')
-                return redirect(url_for('edit_note', note_id=note_id))
-
-    if remove_file and file_path:
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file_path.split('/')[-1]))
-            file_path = None
-        except Exception as e:
-            app.logger.error(f"Error deleting file: {e}")
-            flash('Ошибка при удалении файла', 'error')
-
-    db.execute('''
-        UPDATE notes 
-        SET content = ?, is_public = ?, file = ?
-        WHERE id = ?
-    ''', (content, is_public, file_path, note_id))
-    db.commit()
-
-    flash('Заметка обновлена!', 'success')
-    return redirect(url_for('index'))
-
+        flash('Заметка обновлена!', 'success')
+        return redirect(url_for('index'))
     return render_template('edit_note.html', note=dict(note))
 
 

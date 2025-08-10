@@ -114,7 +114,7 @@
     <div class="form-container">
         <h1>{% if note %}Редактировать{% else %}Создать{% endif %} заметку</h1>
 
-        <form method="POST" enctype="multipart/form-data">
+        <form id="edit-form">
             <div class="form-group">
                 <h3>{{ note.title }}</h3>
                 <input type="hidden" name="title" value="{{ note.title }}">
@@ -134,18 +134,15 @@
                 <label>Прикрепленный файл:</label>
 
                 {% if note and note.file %}
-                    <div class="file-preview">
+                    <div class="file-preview" id="file-preview">
                         Текущий файл: {{ note.file }}
                         <a href="/download?filename={{ note.file }}" target="_blank">(просмотреть)</a>
                     </div>
                     <div class="file-actions">
-                        <button type="button" onclick="document.getElementById('file').click()" class="btn btn-secondary">
+                        <button type="button" onclick="document.getElementById('file-input').click()" class="btn btn-secondary">
                             Заменить файл
                         </button>
-                        <button type="submit" name="remove_file" value="1" class="btn btn-danger">
-                            Удалить файл
-                        </button>
-                        <input type="file" id="file" name="file" style="display: none;" onchange="this.form.submit()">
+                        <input type="file" id="file-input" name="file" style="display: none;" onchange=changeFile()>
                     </div>
                 {% else %}
                     <div class="file-actions">
@@ -155,7 +152,7 @@
             </div>
 
             <div class="form-group">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" id="form-button" class="btn btn-primary">
                     {% if note %}Сохранить{% else %}Создать{% endif %}
                 </button>
                 <a href="{{ url_for('index') }}" class="back-link">Назад к списку</a>
@@ -164,12 +161,63 @@
     </div>
 
     <script>
-        // Автоматическая отправка формы при выборе файла для замены
-        document.getElementById('file')?.addEventListener('change', function() {
-            if (this.files.length > 0) {
-                this.form.submit();
+        const submitButton = document.getElementById("form-button");
+        const filePreview = document.getElementById("file-preview");
+        const fileInput = document.getElementById("file-input");
+
+        function changeFile() {
+            filePreview.textContent = "Текущий файл: " + fileInput.files[0].name;
+        }
+        
+
+        submitButton.addEventListener("click", async (event) => {
+            event.preventDefault();
+
+            const content = document.getElementById("content").value;
+            const fileInput = document.getElementById("file");
+            const isPublic = document.getElementById("is_public").checked;
+
+            const file = fileInput.files[0];
+
+            try {
+                let data = {
+                    content,
+                    is_public: isPublic ? "true" : "false",
+                };
+                if (file) {
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    const res = await fetch("/load", {
+                        method: "POST",
+                        body: formData,
+                    });
+
+                    if (!res.ok) {
+                        console.error("Failed to upload file");
+                        return;
+                    }
+                    data.file = file.name;
+                }
+
+                const res2 = await fetch(window.location.pathname, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                if (!res2.ok) {
+                    console.error("Failed to post note");
+                    return;
+                }
+
+                window.location.href = "/";
+            } catch (error) {
+                console.error("Ошибка:", error);
             }
         });
+
     </script>
 </body>
 </html>
