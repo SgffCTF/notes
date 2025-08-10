@@ -1,3 +1,5 @@
+#!/usr/bin/env -S python3
+
 import sys
 import notes_api
 from checklib import *
