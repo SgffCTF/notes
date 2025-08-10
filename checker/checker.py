@@ -22,7 +22,7 @@ class Checker(BaseChecker):
         self.api.login(username, password)
         
         title, content = rnd_string(10), rnd_string(10)
-        note_id = self.api.add(title, content, is_public=1)
+        note_id = self.api.add(title, content, is_public=True, file="random.txt")
         html_data = self.api.public()
         
         if title not in html_data:
@@ -31,7 +31,7 @@ class Checker(BaseChecker):
             self.cquit(Status.CORRUPT, "Содержимое заметки не совпало")
             
         new_content = rnd_string(10)
-        self.api.check_edit_note(note_id, new_content, is_public=1, remove_file='')
+        self.api.check_edit_note(note_id, new_content, is_public=1, file='random.txt')
         
         html_data = self.api.public()
         if new_content not in html_data:
@@ -53,7 +53,7 @@ class Checker(BaseChecker):
         self.api.login(username, password)
         
         content = rnd_string(10)
-        note_id = self.api.add(flag, content, is_public=0)
+        note_id = self.api.add(flag, content, is_public=0, file='random.txt')
         if note_id == -1:
             self.cquit(Status.CORRUPT, "Заметка не была создана")
         

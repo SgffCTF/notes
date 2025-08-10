@@ -36,13 +36,13 @@ class NotesApi:
         r = self.session.post(url=f'{self.url}/login', data={'username': username, 'password': password})
         self.c.assert_eq(r.status_code, 200, "Статус код не совпал")
 
-    def add(self, title: str, content: str, is_public: bool) -> int:
+    def add(self, title: str, content: str, is_public: bool, file: str) -> int:
         data = {
             'title': title,
-            'content': content
+            'content': content,
+            'is_public': "true" if is_public else "false",
+            "file": file
         }
-        if is_public:
-            data["is_public"] = 1
         r = self.session.post(url=f'{self.url}/add', json=data)
         self.c.assert_eq(r.status_code, 200, "статус код не совпал")
         
@@ -54,13 +54,24 @@ class NotesApi:
 
     def download_file(self, filename: str):
         r = self.session.get(f"{self.url}/download/{filename}")
-
         self.assert_not_in("Файл не найден или у вас нет доступа", r.text, "Файл не найден или у вас нет доступа")
 
-    def check_edit_note(self, note_id: int, content: str, is_public: int, remove_file: str):
-        r = self.session.post(url=f'{self.url}/edit/{note_id}', data={'content': content, 'is_public': is_public, 'remove_file': remove_file})        
+    def check_edit_note(self, note_id: int, content: str, is_public: bool, file: str):
+        data = {
+            'content': content,
+            'is_public': "true" if is_public else "false",
+            "file": file
+        }
+        r = self.session.post(url=f'{self.url}/edit/{note_id}', json=data)      
         self.c.assert_eq(r.status_code, 200, "Обновление заметки не работает")
 
     def check_delete(self, note_id: int):
         self.session.get(f'{self.url}/delete/{note_id}', allow_redirects=True)
+    
+    def load_file(self, filename: str):
+        files = {
+            'file': (filename, open(filename, 'rb'), 'text/plain')
+        }
+        r = requests.post(f"{self.url}/load", files=files)
+        self.c.assert_eq(r.status_code, 200, "Не удалось загрузить файл")
 
